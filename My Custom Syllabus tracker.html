@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>JEE Tracker</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: radial-gradient(circle, #0f1226, #05060d);
+    color: white;
+}
+
+h1 { text-align: center; }
+
+.container {
+    display: flex;
+    padding: 20px;
+    gap: 20px;
+}
+
+.card {
+    background: rgba(255,255,255,0.05);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.sidebar { width: 260px; }
+
+.subject-header {
+    cursor: pointer;
+    padding: 12px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.section-title {
+    margin-top: 12px;
+    font-weight: bold;
+    opacity: 0.85;
+}
+
+.chapter {
+    margin-top: 10px;
+    padding: 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+}
+
+.row {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0;
+}
+
+button {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: none;
+    background: #6a5cff;
+    color: white;
+    cursor: pointer;
+}
+
+button.done { background: #22c55e; }
+
+.progress-bar {
+    height: 6px;
+    background: #333;
+    border-radius: 10px;
+}
+
+.fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6a5cff, #9f7bff);
+}
+
+.big { font-size: 38px; }
+</style>
+</head>
+
+<body>
+
+<h1>JEE Tracker</h1>
+
+<div class="container">
+<div class="card sidebar">
+    <h3>Total Progress</h3>
+    <div class="big" id="total">0.00%</div>
+    <div class="progress-bar"><div class="fill" id="totalBar"></div></div>
+</div>
+
+<div style="flex:1" id="main"></div>
+</div>
+
+<script>
+
+const syllabus = {
+
+Physics: {
+"Class 11": [
+"Kinematics","NLM","Work Energy Power","Rotational Motion",
+"Gravitation","Mechanical Properties of Solids","Fluids",
+"Thermodynamics","Kinetic Theory","Oscillations","Waves"
+],
+"Class 12": [
+"Electrostatics","Capacitance","Current Electricity",
+"Magnetic Effects of Current","Magnetism",
+"Electromagnetic Induction","Alternating Current",
+"Ray Optics","Wave Optics","Modern Physics"
+]
+},
+
+Chemistry: {
+"Class 11": [
+"Mole Concept","Atomic Structure","Periodic Table",
+"Chemical Bonding","States of Matter","Thermodynamics",
+"Equilibrium","Redox Reactions","Hydrogen","s-Block","p-Block"
+],
+"Class 12": [
+"Solid State","Solutions","Electrochemistry",
+"Chemical Kinetics","Surface Chemistry",
+"d & f Block","Coordination Compounds",
+"Haloalkanes","Alcohol Phenol Ether",
+"Aldehydes Ketones","Carboxylic Acids",
+"Amines","Biomolecules"
+]
+},
+
+Mathematics: {
+"Class 11": [
+"Sets","Relations","Trigonometry","Quadratic Equations",
+"Sequence Series","Binomial Theorem",
+"Straight Lines","Circles","Limits","Statistics"
+],
+"Class 12": [
+"Matrices","Determinants","Continuity & Differentiability",
+"Applications of Derivatives","Integrals",
+"Differential Equations","Vectors","3D Geometry","Probability"
+]
+}
+
+};
+
+function createChapter(){
+    return { classDone:false, theory:0, qsolve:false, confidence:0 };
+}
+
+let data = JSON.parse(localStorage.getItem("jeeFull")) || {};
+let openState = {};
+
+for(let sub in syllabus){
+    if(!data[sub]) data[sub]={};
+    openState[sub] = false;
+
+    for(let cls in syllabus[sub]){
+        if(!data[sub][cls]) data[sub][cls]={};
+
+        syllabus[sub][cls].forEach(ch=>{
+            if(!data[sub][cls][ch]){
+                data[sub][cls][ch]=createChapter();
+            }
+        });
+    }
+}
+
+function save(){
+    localStorage.setItem("jeeFull", JSON.stringify(data));
+}
+
+function chapterPercent(c){
+    return ((c.classDone?100:0)+c.theory+(c.qsolve?100:0)+c.confidence)/4;
+}
+
+function render(){
+    const main = document.getElementById("main");
+    main.innerHTML="";
+
+    let total=0, count=0;
+
+    for(let sub in syllabus){
+
+        const card=document.createElement("div");
+        card.className="card";
+
+        const header=document.createElement("div");
+        header.className="subject-header";
+        header.innerHTML=`<span>${sub}</span><span>${openState[sub]?"▼":"▶"}</span>`;
+        header.onclick=()=>{openState[sub]=!openState[sub]; render();};
+
+        card.appendChild(header);
+
+        if(openState[sub]){
+            for(let cls in syllabus[sub]){
+
+                const title=document.createElement("div");
+                title.className="section-title";
+                title.innerText=cls;
+                card.appendChild(title);
+
+                syllabus[sub][cls].forEach(ch=>{
+                    const c=data[sub][cls][ch];
+                    const percent=chapterPercent(c);
+
+                    total+=percent;
+                    count++;
+
+                    const box=document.createElement("div");
+                    box.className="chapter";
+
+                    box.innerHTML=`<b>${ch} (${percent.toFixed(2)}%)</b>`;
+
+                    const bar=document.createElement("div");
+                    bar.className="progress-bar";
+                    const fill=document.createElement("div");
+                    fill.className="fill";
+                    fill.style.width=percent+"%";
+                    bar.appendChild(fill);
+                    box.appendChild(bar);
+
+                    function row(label){
+                        const r=document.createElement("div");
+                        r.className="row";
+                        const l=document.createElement("span");
+                        l.innerText=label;
+                        r.appendChild(l);
+                        return r;
+                    }
+
+                    let r1=row("Class");
+                    let b1=document.createElement("button");
+                    b1.innerText="✔";
+                    if(c.classDone) b1.classList.add("done");
+                    b1.onclick=()=>{c.classDone=!c.classDone; render();};
+                    r1.appendChild(b1);
+                    box.appendChild(r1);
+
+                    let r2=row(`Theory ${c.theory.toFixed(1)}%`);
+                    let tbox=document.createElement("div");
+
+                    let tplus=document.createElement("button");
+                    tplus.innerText="+5";
+                    tplus.onclick=()=>{c.theory=Math.min(100,c.theory+5); render();};
+
+                    let tminus=document.createElement("button");
+                    tminus.innerText="-5";
+                    tminus.onclick=()=>{c.theory=Math.max(0,c.theory-5); render();};
+
+                    tbox.appendChild(tplus);
+                    tbox.appendChild(tminus);
+                    r2.appendChild(tbox);
+                    box.appendChild(r2);
+
+                    let r3=row("Q Solve");
+                    let b3=document.createElement("button");
+                    b3.innerText="✔";
+                    if(c.qsolve) b3.classList.add("done");
+                    b3.onclick=()=>{c.qsolve=!c.qsolve; render();};
+                    r3.appendChild(b3);
+                    box.appendChild(r3);
+
+                    let r4=row(`Confidence ${c.confidence.toFixed(1)}%`);
+                    let cbox=document.createElement("div");
+
+                    let cplus=document.createElement("button");
+                    cplus.innerText="+5";
+                    cplus.onclick=()=>{c.confidence=Math.min(100,c.confidence+5); render();};
+
+                    let cminus=document.createElement("button");
+                    cminus.innerText="-5";
+                    cminus.onclick=()=>{c.confidence=Math.max(0,c.confidence-5); render();};
+
+                    cbox.appendChild(cplus);
+                    cbox.appendChild(cminus);
+                    r4.appendChild(cbox);
+                    box.appendChild(r4);
+
+                    card.appendChild(box);
+                });
+            }
+        }
+
+        main.appendChild(card);
+    }
+
+    const totalPercent = count ? total/count : 0;
+    document.getElementById("total").innerText = totalPercent.toFixed(2)+"%";
+    document.getElementById("totalBar").style.width = totalPercent+"%";
+
+    save();
+}
+
+render();
+
+</script>
+
+</body>
+</html>
